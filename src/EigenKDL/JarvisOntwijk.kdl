@@ -1,0 +1,26 @@
+***Dit programma laat Jarvis obstakels ontwijken.
+laat richting = WAAR;
+
+TERWIJL( WAAR ) {
+  laat afstand = JARVIS_AFSTAND;
+  ALS( ( afstand < 15 ) ) {
+    ACHTERUIT;
+  }
+  ALS( ( afstand < 20 ) ) {
+    ALS( richting ) {
+      LINKS;
+    }
+    ANDERS {
+      RECHTS;
+    }
+    ALS ( richting ) {
+      laat richting = VALS;
+    }
+    ANDERS {
+      laat richting = WAAR;
+    }
+  }
+  ANDERS {
+    VOORUIT;
+  }
+}

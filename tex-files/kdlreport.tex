@@ -1,0 +1,260 @@
+\documentclass[a4paper]{article}
+
+%% Language and font encodings
+\usepackage[dutch]{babel}
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+
+%% Sets page size and margins
+\usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+% BNF syntax
+\usepackage{color}
+\usepackage{syntax}
+%% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{listings}
+% Used for images
+\usepackage{graphicx}
+\usepackage{epstopdf}
+% Needed to use headers
+\usepackage{fancyhdr}
+% Used for the euro symbol
+\usepackage[gen]{eurosym}
+% Used for optimal usage of gensymb
+\usepackage{textcomp}
+% Used for the degree symbol
+\usepackage{gensymb}
+% Used for captions and subcaptions on images
+\usepackage{caption}
+\usepackage{subcaption}
+% Used for tables
+\usepackage{tabu}
+% Used for colors
+
+
+
+\title{Functioneel Programmeren: Haskell MBot Project}
+\author{Quinten Lootens}
+
+\begin{document}
+\maketitle
+\lstset{
+	frame=none,
+	xleftmargin=2pt,
+	stepnumber=1,
+	numbers=left,
+	numbersep=5pt,
+	numberstyle=\ttfamily\tiny\color[gray]{0.3},
+	belowcaptionskip=\bigskipamount,
+	captionpos=b,
+	escapeinside={*'}{'*},
+	language=haskell,
+	tabsize=2,
+	emphstyle={\bf},
+	commentstyle=\it,
+	stringstyle=\mdseries\rmfamily,
+	showspaces=false,
+	keywordstyle=\bfseries\rmfamily,
+	columns=flexible,
+	basicstyle=\small\sffamily,
+	showstringspaces=false,
+	morecomment=[l]\%,
+}
+\section{Introductie}
+De opdracht van dit project is een programmeertaal te ontwikkelen die een robot aanstuurt. Deze taal moet uitvoerbaar zijn door het gebruik van een Haskell programma dat zelf geschreven moet worden. \\
+Mijn taal draagt de naam \textit{KDL}, \textbf{Kill the DeadLine}, en is voornamelijk gebaseerd op \textit{JavaScript} en \textit{Java}. Eenvoudig gesteld is het een taal die vergelijkbaar is met een Nederlandse versie van Java. \\
+Er zijn drie programma's in \textit{KDL}  geschreven die verder in het verslag worden toegelicht: \textbf{Politie.kdl}, \textbf{VolgDeLijn.kdl} en \textbf{JarvisOntwijk.kdl}.
+
+
+
+\section{KDL Syntax}
+
+\begin{grammar}
+	
+	<Program> ::= <Statement>*
+	
+	<BlockStatement> ::= '\{' <Statement>* '\}'
+	
+	<Statement> ::= <If-Else> | <While> |  <Expression>  | <Comment>
+	
+	<Expression> ::= <Binaryop> | <Assignment> | <Apply> | <Jarvis> | <Print> + ' ;'
+	
+	<Value> ::= <Int> | <Double> | <String> | <Bool>
+	
+	<Int>            ::= \{<Digit>\}{1+} | '-' \{<Digit>\}{1+}
+	
+	<Double>        ::= <Int> '.' <Int>
+	
+	<Char> ::= '' \{<Letter> | <Digit> | <Underscore> | <Space>\}{1} ''
+	
+	<String> ::=  '' \{<Char>\}{2+} ''
+	
+	<Bool>           ::= "WAAR" | "VALS"
+	
+	<Binaryop>       ::= '(' <Space>  <Value> <Space>  <Op> <Space>  <Value> <Space>  ')' $\ast$
+	
+	<Op> ::=  `+' | `-' | `*' | `==' | `!=' | `>' | `>=' | `<' | `<=' | `&&' | `||'
+	
+	<Assignment> ::= "laat" <Space> \{<Identifier> | <System Identifier>\} <Space> `=' <Space>  \{<Expression> | <Value>\}
+	
+	<Letter> ::= <Lowercase_letter> | <Uppercase_letter>
+	
+	<Underscore> ::= '_'
+	
+	<Lowercase_letter> ::= a|b|c|d|...|z
+	
+	<Uppercase_letter> ::= A|B|C|D|...|Z
+	
+	<Digit> ::= 0|1|2|3|4|5|6|7|8|9
+	
+	<Identifier>     ::=  \{<Letter>\}{1} \{<letter> | <Underscore> | <Digit>\}{0+}
+	
+	<System Identifier> ::= <Underscore><Identifier>
+	
+	<Apply>          ::= '(' <Expression> '(' <Expression> ')' ')'
+	
+	<Empty>          ::= ''
+	
+	<Space>      ::= ' '
+	
+	<While>			::= "TERWIJL" 	'(' <Expression> ')'  <BlockStatement>
+	
+	<If-Else> 		::= "ALS" '(' <Expression> ')' <BlockStatement> \{"ANDERS" <BlockStatement>\}{opt}
+	
+	<Jarvis>	::= <Sensor> | "WACHT" | "LINKS" | "RECHTS" | "VOORUIT" | "ACHTERUIT" | "LICHT1" '(' <Int>, <Int>, <Int> ')' | "LICHT2" '(' <Int>, <Int>, <Int> ')' 
+	
+	<Sensor>  ::= "laat" <Space> <Identifier> <Space> `=' <Space>  \{"JARVIS_LIJN" | "JARVIS_AFSTAND"\}
+	
+	<Comment> ::= "***"<Empty>\{<Letter> | <Digit>\}{1}<String>
+	
+	<Print> ::= "PRINT" '(' <Expression> ')'
+\end{grammar}
+	$\ast$ : <Value> afhankelijk van de ondersteunde operatie.
+	
+
+
+\section{Semantiek van KDL}
+Een programma bestaat uit een opeenvolging van statements. Elk statement wordt afgesloten met een puntkomma. De volledige semantiek is geïnspireerd op Java; in KDL zijn de statements evenwel in het Nederlands in plaats van het Engels.
+
+\begin{itemize}
+	\item \verb|Jarvis|: Alles wat over Jarvis gaat, gaat over de MBot van Makeblock.
+	\item \verb|Assignment|: Dit wordt gebruikt om variabelen te declareren alsook om een nieuwe waarde toe te kennen aan een variabele. Het linker lid bevat eerst ''laat''  en dan een naam van de variabele. De ''laat'' geeft aan dat het over een variabele gaat. Het rechterlid bevat een expressie.
+	\item \verb|LICHT1(Int, Int, Int)|: Dit is een ingebouwde functie die toelaat van de LED's op de robot te bedienen. Ze neemt drie argumenten, namelijk de kleur in RGB-waarde. LICHT2 is analoog aan LICHT1.
+	\item \verb|WACHT|: Jarvis stopt.
+	\item \verb|VOORUIT|: Dit laat Jarvis vooruit rijden.
+	\item \verb|ACHTERUIT|: Dit laat Jarvis achteruit rijden.
+	\item \verb|LINKS|: Dit draait Jarvis naar links.
+	\item \verb|RECHTS|: Dit draait Jarvis naar rechts.
+	\item \verb|JARVIS_LIJN|: De sensor van Jarvis gaat een waarde teruggeven. Deze waarde is een integer en geeft aan naar welke kant Jarvis zal moeten uitwijken.
+	\item \verb|JARVIS_AFSTAND|: De sensor van Jarvis gaat een waarde teruggeven. Deze is een integer en geeft de afstand tussen zichzelf en een object aan.
+	\item \verb|TERWIJL|: Dit herhaalt een reeks statements zolang de conditie naar \verb|WAAR| evalueert. De hantering van dit commando staat beschreven in de vorige sectie.
+	\item \verb|ALS ANDERS|: Dit evalueert een Booleanse Expressie waarna het dan de betreffende StatementBlock zal uitvoeren. De hantering van dit commando staat beschreven in de vorige sectie.
+	\item \verb|Comment|: De commentaar van de programmeer kan geschreven worden door op een nieuwe lijn eerst *** te schrijven. Het eerste karakter na *** mag geen spatie zijn.
+	
+\end{itemize}
+
+
+\section{KDL Programma's}
+\subsection{Politie.kdl}
+Dit is een eenvoudig programma dat de lichten van Jarvis constant laat veranderen door middel van het commando \verb|LICHT1(0, 0, 255)| en \verb|LICHT2(0, 0, 0)|. Door de waarden van de commando's in een \verb|TERWIJL| lus constant te laten wisselen, simuleren we hiermee politielichten.
+
+\subsection{VolgDeLijn.kdl}
+Om Jarvis een zwarte lijn te laten volgen, laten we een programma lopen dat constant de sensor van Jarvis leest en verwerkt. \\
+We gebruiken een \verb|TERWIJL| lus met daarin  \verb|ALS ANDERS| statements. We beginnen met een variabele aan te maken die direct ook aan Jarvis zegt dat we de LINE sensor willen gebruiken. Dit doen we door middel van \verb|JARVIS_LIJN|.  \\
+Daarna gaan we telkens na wat de output van dat commando is. Aan de hand daarvan kunnen we zeggen aan Jarvis of hij \verb|VOORUIT|, \verb|ACHTERUIT|, \verb|LINKS| of \verb|RECHTS| moet gaan.
+
+\subsection{JarvisOntwijk.kdl}
+Dit programma is analoog geschreven aan \textbf{VolgDeLijn.kdl}. We beginnen eerst met een variabele te declareren om zo te kunnen afwisselen in welke richting Jarvis zou moeten uitwijken. \\
+We gebruiken een \verb|TERWIJL| lus met daarin  \verb|ALS ANDERS| statements. We beginnen met een variabele aan te maken die direct ook aan Jarvis zegt dat we de DISTANCE sensor willen gebruiken. Dit doen we door middel van \verb|JARVIS_AFSTAND|. \\
+Daarna gaan we telkens na wat de output van dat commando is. Aan de hand daarvan kunnen we zeggen aan Jarvis of hij \verb|VOORUIT|, \verb|ACHTERUIT|, \verb|LINKS| of \verb|RECHTS| moet gaan. \\
+Wanneer Jarvis naar links of naar rechts gaat, laten we de variabele die we in het begin hebben gedeclareerd, veranderen van waarde.
+
+\section{Implementatie KDL}
+Om de implementatie van de code toe te lichten, bespreken we chronologisch de modules. We brengen ze op zo'n manier dat ze telkens verder bouwen op het vorige. \\
+
+In de module \textit{Parser.hs} initialiseer ik een Monad Parser. Ik schrijf hier ook nog een aantal hulpfuncties. \\
+
+In de module \textit{DataParser.hs}  ga ik alles van Strings, Characters, Integers, etc... parsen. Het is vooral een oplijsting van functies die tal van karakters waarnemen en Parsen zodat de taal zijn basisvorm kan krijgen. Een voorbeeld hiervan zijn de functies met \textbf{bracket} van lijn 42 tot lijn 52. 
+Ook is er overal rekening gehouden met spaties, deze probeer ik zoveel mogelijk te negeren. In dat geval vind ik \textbf{whitespace} op lijn 54 een belangrijke functie. Deze wordt in vele andere functies toegepast. \\ 
+
+In de module \textit{Expressions.hs} ga ik \textit{Expressions}, \textit{Values} en \textit{KDLValues} definiëren. Deze liggen aan de basis om operaties op uit te voeren dan. De functie \textbf{parseExp} op lijn 83 is eigenlijk de omvattende functie die de expressies zal Parsen. \\
+
+In de module \textit{Evaluator.hs} definieer ik een Map waar ik een String en Value aan meegeef. Kort gezegd de container van wat bijgehouden moet worden tijdens het verwerken van een programma. In de vorige paragraaf beschreef ik wat we allemaal kunnen parsen, in deze module gaan we die Expressies verwerken naar Values, naar KDLValues (Either String Value). \\
+
+In de module \textit{Statements.hs} parse ik de statements die ik in sectie 2 heb besproken. Zoals ik in \textit{Expressions.hs} expressies parse, doe ik dit nu met statements. De functie \textbf{parseStatement} op lijn 46 parset alle basis Statements zoals we die kennen in Java en andere imperatieve programmeertalen. Op lijn 54 definieer ik \textbf{parseEXEC}; deze gaat een blok statements parsen. Dit vind ik hier wel een belangrijke functie. De Jarvis Statements parse ik eronder op een analoge wijze. \\
+
+In de module \textit{Jarvis.hs} implementeer ik de MBot functies. Ik maak hier gebruik van threadDelay om ervoor te zorgen dat er geen overvloed van commando's naar Jarvis kunnen gestuurd worden. \\
+
+In de module \textit{RunKDL.hs} laat ik de Statements uitvoeren. Het is te vergelijken met de \textit{Evaluator.hs} voor Expressies. De functie \textbf{run} op lijn 24 is de basis van heel de module. Ik overloop alle mogelijke Statements en verwerk die volgens hun definitie.
+
+\section{Conclusie}
+
+In de KDL programmeertaal zijn we in staat om de meest primitieve statements die gekend zijn in imperatieve programmeertalen te implementeren en uit te voeren. Eenvoudige programma's kunnen geschreven worden op een overzichtelijke manier. Omdat de taal, niet zoals de meeste programmeertalen, in het Nederlands is, komt het voor Nederlandstaligen helder en begrijpbaar over. \\
+
+Om de programmeertaal verder uit te breiden zodat hij meerdere functies ondersteunt, is het belangrijk een aantal zaken in de Haskell code aan te passen. Op dit moment heb ik vrij expliciet de expressies beschreven. Ik zou deze generischer kunnen schrijven door de expressies verder te ontbinden.  (Volgende code kan gevonden worden op lijn 34 in \textbf{Expressions.hs}.)
+\begin{lstlisting}
+data Exp = Lit Value | Assign Name Exp | Variable Name | Apply Exp Exp | Assist Name Exp 
+				| Exp :+:  Exp | Exp :-:  Exp | Exp :*:  Exp | Exp :=:  Exp | Exp :==: Exp | Exp :/=: Exp 
+				| Exp :>:  Exp | Exp :>=: Exp | Exp :<:  Exp | Exp :<=: Exp | Exp :&&: Exp
+				| Exp :||: Exp
+\end{lstlisting}
+Voorgaande code zou ik dan schrijven als volgt:
+\begin{lstlisting}
+data Exp = Lit Value | BinOp Exp Op Exp |  Variable Name | Assist Name Exp | Apply Exp Exp
+data Op = (:+:)  | (:-:)  | (:*:)  | (:/:)  | (:&&:) | (:||:) | (:>:)  | (:>=:) | (:<:)  
+			  | (:<=:) | (:==:) | (:!=:)
+\end{lstlisting}
+Dit zou toelaten om bij de \textbf{Evaluator.hs} een betere manier te hanteren die dan ook meerdere KDLValues (types) kan ondersteunen. Daarnaast kunnen ook nog \textit{Statements} toegevoegd worden, waaronder: For-loops, Case, etc... \\
+
+De KDL taal is ideaal om in het Nederlands kennis te maken met een imperatieve programmeertaal.
+
+
+\section{Appendix broncode}
+\label{sec:broncode}
+
+
+\begin{center}
+	\textbf{Main.hs}
+\end{center}
+\lstinputlisting{Main.hs}
+\begin{center}
+	\textbf{Parser.hs}
+\end{center}
+\lstinputlisting{Parser.hs}
+\begin{center}
+	\textbf{DataParser.hs}
+\end{center}
+\lstinputlisting{DataParser.hs}
+\begin{center}
+	\textbf{Expressions.hs}
+\end{center}
+\lstinputlisting{Expressions.hs}
+\begin{center}
+	\textbf{Evaluator.hs}
+\end{center}
+\lstinputlisting{Evaluator.hs}
+\begin{center}
+	\textbf{Statements.hs}
+\end{center}
+\lstinputlisting{Statements.hs}
+\begin{center}
+	\textbf{JarvisStmt.hs}
+\end{center}
+\lstinputlisting{JarvisStmt.hs}
+\begin{center}
+	\textbf{Jarvis.hs}
+\end{center}
+\lstinputlisting{Jarvis.hs}
+\begin{center}
+	\textbf{RunKDL.hs}
+\end{center}
+\lstinputlisting{RunKDL.hs}
+
+
+
+
+
+\end{document}

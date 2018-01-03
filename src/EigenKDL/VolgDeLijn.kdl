@@ -1,0 +1,16 @@
+***Dit programma laat Jarvis een zwarte lijn volgen.
+TERWIJL(WAAR) {
+  laat lijn = JARVIS_LIJN;
+  ALS( ( lijn == 1 ) ) {
+    LINKS;
+  }
+  ALS( ( lijn == 2 ) ) {
+    RECHTS;
+  }
+  ALS( ( lijn == 3 ) ) {
+    VOORUIT;
+  }
+  ALS( ( lijn == 4 ) ) {
+    ACHTERUIT;
+  }
+}

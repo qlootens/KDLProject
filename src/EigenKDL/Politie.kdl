@@ -1,0 +1,8 @@
+***Dit programma laat Jarvis Politie spelen.
+VOORUIT;
+TERWIJL (WAAR) {
+  LICHT1(0, 0, 255);
+  LICHT2(0, 0, 0);
+  LICHT1(0, 0, 0);
+  LICHT2(0, 0, 255);
+}
